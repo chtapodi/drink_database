@@ -13,13 +13,13 @@ class menu_generator :
         os.system('clear')
         print("")
         print(color.CYAN + self.message + color.END)
-        print(color.DARKCYAN + instructions +color.END, end="\n-")
+        print(color.DARKCYAN + instructions +color.END)
 
         for i in range(0,len(options)) :
             if i==index :
-                print(color.PURPLE + options[i] + color.END, end=" ")
+                print(color.PURPLE + options[i] + color.END)
             else :
-                print(options[i],end=" ")
+                print(options[i])
         print("")
 
 
@@ -29,9 +29,9 @@ class menu_generator :
             self.visualize_menu(options, menu_index, instructions=instructions)
             try :
                 key=readchar.readkey()
-                if key=='a' or  key == readchar.key.LEFT :
+                if key=='w' or  key == readchar.key.UP :
                     menu_index-=1
-                elif key=='d' or key == readchar.key.RIGHT:
+                elif key=='s' or key == readchar.key.DOWN:
                     menu_index+=1
                 elif key=='q' :
                     break
@@ -76,6 +76,13 @@ class recipe :
         for ingredient in self.ingredients.keys() :
             print(" " + color.YELLOW +self.ingredients[ingredient] + " - " + ingredient + color.END)
         print("\n")
+
+    def to_string(self) :
+        str=color.BOLD +color.BLUE+ self.name+ color.END + "\n" +color.CYAN+"page "+self.page +"\n" +self.method +color.END + "\n"
+        for ingredient in self.ingredients.keys() :
+            str+=" " + color.YELLOW +self.ingredients[ingredient] + " - " + ingredient + color.END +"\n"
+        str+="\n"
+        return str
 
 class drink_index :
     def __init__(self, recipes={}) :
@@ -144,7 +151,8 @@ class drink_index :
         for book,recipes in self.recipes.items() :
             print("Book: " + book)
             for entry in recipes.values() :
-                entry.print()
+                # entry.print()
+                print(entry.to_string())
         input()
 
 
@@ -159,6 +167,8 @@ class drink_index :
                 if input("delete ?")=="y" :
                     del book[name]
 
+
+    # def search(self) :
 
 
     def add_entries(self) :
