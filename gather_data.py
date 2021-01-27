@@ -64,6 +64,7 @@ class recipe :
         self.page=page_num
         self.method=method
         self.ingredients={}
+        self.rating=None
 
     def add_ingredient(self, quantity, substance) :
             self.ingredients[substance]=quantity
