@@ -715,17 +715,13 @@ def main() :
 	except Exception :
 		pass
 
-	recipes.update(recipes_local)
-	drinks=drink_index(recipes=recipes, cabinet=cabinet)
-
-	# fun little test bed
-	# for entry in drinks.recipes.values() :
-	# 	print(entry.get_keywords())
-	# input()
-
-	#starts the UI
-	drinks.main_menu()
-
+	try :
+		recipes.update(recipes_local)
+		drinks=drink_index(recipes=recipes, cabinet=cabinet)
+		#starts the UI
+		drinks.main_menu()
+	except Exception :
+		pass
 
 	pickle.dump( drinks.recipes, open( "recipes.p", "wb" ) )
 	pickle.dump( drinks.recipes, open( "recipes_local.p", "wb" ) )
