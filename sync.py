@@ -122,7 +122,7 @@ def main() :
 
 
 	recipes.update(recipes_local) #combine backup and new
-	
+
 	pickle.dump( recipes, open( "recipes.p", "wb" ) )
 	pickle.dump( recipes, open( "recipes_local.p", "wb" ) )
 
