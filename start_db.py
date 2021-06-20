@@ -64,7 +64,7 @@ class color:
 
 # holds a single recipe with ingredients and book and page information
 class recipe :
-	def __init__(self, name, book, page_num, method) :
+	def __init__(self, name, book="", page_num=0, method="") :
 		self.name=name
 		self.book=book
 		self.id=self.book+"_"+self.name
@@ -90,7 +90,7 @@ class recipe :
 
 	#returns a string with all the base informtion on the drink
 	def data_string(self) :
-		data=color.BOLD +color.BLUE+ self.name+ color.END + "\n " +self.book+"\n "+color.CYAN+ "page "+self.page +"\n " +self.method +color.END
+		data=color.BOLD +color.BLUE+ self.name+ color.END + "\n " +self.book+"\n "+color.CYAN+ "page "+str(self.page) +"\n " +self.method +color.END
 		rating=self.get_rating()
 		if rating!=None :
 			data+="\n rated {}/5".format(rating)
@@ -237,15 +237,27 @@ class drink_index :
 
 		for unit in units :
 			if unit in ingredient :
-				# break_point=ingredient.find(unit)
-				# substance=ingredient[break_point+len(unit):].strip()
-				# quantity=int(ingredient[0:break_point].strip())
-
 				ingredient_string=ingredient.replace(unit,'')
 				ingredient_list=ingredient_string.split(" ")
 				if len(ingredient_list)>1 : #if there is a quanity and an ingredient
-					quantity=float(ingredient_list[0].strip())
-					substance=" ".join(ingredient_list[1:]) #this is a little weird but deals with multi word ingredients
+					quantity=0.0
+					quantity_str=ingredient_list[0].strip()
+
+					#deals with fraction strings, shamelessly stolen from the internet
+					try:
+						quantity= float(quantity_str)
+					except ValueError:
+						num, denom = quantity_str.split('/')
+						try:
+							leading, num = num.split(' ')
+							whole = float(leading)
+						except ValueError:
+							whole = 0
+							frac = float(num) / float(denom)
+						quantity= whole - frac if whole < 0 else whole + frac
+
+
+					substance=" ".join(ingredient_list[1:]).strip().lower() #this is a little weird but deals with multi word ingredients
 
 
 				if unit=="ounce" : unit="oz"
