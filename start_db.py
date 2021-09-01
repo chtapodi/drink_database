@@ -233,7 +233,7 @@ class drink_index :
 	#this finds the unit associated with the measurement and returns [quantity, unit, ingredient]
 	# TODO make it so it doesnt do dumb shit with dashes
 	def pull_units(self, ingredient) :
-		units=["oz","ounce","tsp", "teaspoon","tbl", "tablespoon", "dashes",  "dash", "drops", "drops" "cube", "leaves", "leaf", "barspoon"]
+		units=["oz","ounce","tsp", "teaspoon","tbl", "tablespoon", "dashes",  "dash", "drops", "drops" "cube", "leaves", "leaf","sprig","barspoon", "slices","slice","wedges","wedge","egg","ml","cl", "whole"]
 
 		for unit in units :
 			if unit in ingredient :
@@ -259,7 +259,6 @@ class drink_index :
 
 					substance=" ".join(ingredient_list[1:]).strip().lower() #this is a little weird but deals with multi word ingredients
 
-
 				if unit=="ounce" : unit="oz"
 				if unit=="teaspoon" : unit="tsp"
 				if unit=="tablespoon" : unit="tbl"
@@ -282,22 +281,28 @@ class drink_index :
 		else :
 			return self.pull_units(ingredient)
 
+	def enter_ingredients(self, entry) :
+		while True :
+			self.clear()
+			entry_data=entry.data_string()
+			# print(entry_data)
+			print(entry)
+
+			ingredient=input("input ingredients in format "+color.YELLOW +"quantity unit substance" + color.END +":\nenter q to stop\n")
+
+			try :
+				parsed_ingredient=self.parse_ingredient(ingredient)
+				if parsed_ingredient==None : return
+				if len(parsed_ingredient)>0 :
+						entry.add_ingredient(parsed_ingredient[0],parsed_ingredient[1],parsed_ingredient[2])
+			except Exception :
+				input("Something you typed does not comply with formatting, try again")
+
 	#turn this into a menu
 	def input_recipe_ingredients(self, entry) :
 		ingredient=None
 		if len(entry.get_ingredients())==0 : #if it has no ingres yet
-			self.clear()
-			entry_data=entry.data_string()
-			print(entry_data)
-			ingredient=input("input ingredients in format "+color.YELLOW +"quantity unit substance" + color.END +":\npress q to stop\n")
-			try:
-				parsed_ingredient=self.parse_ingredient(ingredient)
-				if parsed_ingredient==None : return None
-				if len(parsed_ingredient)>0 :
-
-						entry.add_ingredient(parsed_ingredient[0],parsed_ingredient[1],parsed_ingredient[2])
-			except Exception :
-				input("Something you typed does not comply with formatting, try again")
+			self.enter_ingredients(entry)
 		while True :
 			self.clear()
 			entry_data=entry.data_string()
@@ -306,19 +311,13 @@ class drink_index :
 			selection=self.menu.menu(menu_options,entry_data)
 			if selection!=None :
 				if selection==0 :#add ingredient
-					ingredient=input("input ingredients in format "+color.YELLOW +"quantity unit substance" + color.END +":\npress q to stop\n")
-					try :
-						parsed_ingredient=self.parse_ingredient(ingredient)
-						if parsed_ingredient==None : break
-						if len(parsed_ingredient)>0 :
-								entry.add_ingredient(parsed_ingredient[0],parsed_ingredient[1],parsed_ingredient[2])
-					except Exception :
-						input("Something you typed does not comply with formatting, try again")
+					self.enter_ingredients(entry)
+					break
 				else :
 					key_list=entry.get_ingredients()
-					print(key_list)
-					print(selection)
-					input()
+					# print(key_list)
+					# print(selection)
+					# input()
 					if input("remove {}? ".format(key_list[selection-1]))=="y" :
 						entry.remove_ingredient(key_list[selection-1])
 
@@ -328,7 +327,7 @@ class drink_index :
 	#adds a recipe to the index
 	def add_recipe(self, entry) :
 		if entry.id in self.recipes :
-			print("big fuck") #if the drink already exists
+			print("Something went wrong, drink exists") #if the drink already exists
 			input()
 		else :
 			self.recipes[entry.id]=entry
@@ -596,7 +595,7 @@ class drink_index :
 
 					parsed_terms=self.parse_search(search_terms)
 					drink_list=menu_executions[selection](parsed_terms)
-					self.list_drinks(drink_list,"search results\n")
+					self.list_drinks(drink_list,"{} results\n".format(len(drink_list)))
 				else :
 					break
 			except KeyboardInterrupt :
