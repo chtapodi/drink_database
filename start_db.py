@@ -3,6 +3,7 @@ import readchar
 import time
 import os
 import math
+import re
 
 class menu_generator :
 
@@ -147,15 +148,28 @@ class recipe :
 			keywords+=ingredient.split()
 		return keywords
 
+	def get_notes(self) :
+		ansi_escape = re.compile(r'(?:\x1B[@-_]|[\x80-\x9F])[0-?]*[ -/]*[@-~]')
+		return ansi_escape.sub('', self.notes)[1:]
+
 	#returns a list of keywords for searches
 	def get_keywords(self) :
 
 		keywords=self.get_ingredients_keywords()
-		keywords.append(self.name)
+		keywords.extend(self.get_name_list())
 		keywords.append(self.book)
-		keywords.append(self.get_rating())
+		rating=self.get_rating()
+		if rating!=None :
+			keywords.append(str(rating))
+			keywords.append(str(int(rating)))
+			keywords.append("rated")
+			keywords.append("has rating")
 		keywords.append(self.method)
-		keywords+=self.notes.split()
+		notes=self.get_notes().split()
+		if len(notes)>0 :
+
+			keywords.extend(notes)
+			keywords.append("has note")
 		return keywords
 
 	#kinda weird, but if the name is more than one word returns a list of it for searching
@@ -396,10 +410,10 @@ class drink_index :
 	#adds rating to entry
 	def add_rating(self, entry) :
 		try:
-			new_rating=int(input("enter rating out of 5\n"))
+			new_rating=float(input("enter rating out of 5\n"))
 			entry.add_rating(new_rating)
-		except Exception:
-			print("ERROR: not an int")
+		except Exception as e:
+			print(e)
 			input()
 			pass
 
