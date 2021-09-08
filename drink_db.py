@@ -117,6 +117,13 @@ class ingredient_handler :
 				return ingredient
 		return None
 
+	def get_synonyms(self,name) :
+		for synonym_set in self.synonyms:
+			if name in synonym_set :
+				return synonym_set
+		return {name}
+
+
 	def get_scaled_vector(self,name,value,unit,drink_volume) :
 		value=self.unit_converter.convert(value,unit)
 		scale_factor=value/drink_volume
@@ -128,6 +135,7 @@ class ingredient_handler :
 		scaled_vector=ingredient*scale_factor
 		# print("Scaled vector\n",scaled_vector.names)
 		return scaled_vector
+
 
 	def get_drink_volume(self,ingredient_list) :
 		uc=unit_converter('oz')
@@ -396,6 +404,9 @@ class drink_index :
 		self.last_page_number=None
 		self.last_search=""
 		self.menu=menu_generator()
+
+		self.ingredient_handler=ingredient_handler()
+		self.unit_converter=unit_converter()
 
 
 
@@ -769,25 +780,39 @@ class drink_index :
 		return [self.recipes[id] for id in sorted_list]
 
 
+	def get_cabinet(self) :
+		full_cabinet=set()
+		for item in self.cabinet:
+			synonyms=self.ingredient_handler.get_synonyms(item)
+			full_cabinet=set.union(full_cabinet,synonyms)
+		return list(full_cabinet)
+
+
+
 	#organizes search terms
 	def parse_search(self, search_terms) :
 		term_dict={"priority":[],"standard":[],"blacklist":[]}
 		term_list=search_terms.split(',')
+
+		#here I would add a decision to not fuzzy search
 		if "$cabinet" in term_list :
-			term_dict["standard"]+=self.cabinet
+			term_dict["standard"].extend(self.get_cabinet())
 			term_list.remove("$cabinet")
 
 		for term in term_list :
 			term=term.strip()
 			if '*' in term :
 				term=term.replace('*','')
-				term_dict["priority"].append(term)
+				synonyms=self.ingredient_handler.get_synonyms(term)
+				term_dict["priority"].extend(list(synonyms))
 			elif '!' in term :
 				term=term.replace('!','')
-				term_dict["blacklist"].append(term)
+				synonyms=self.ingredient_handler.get_synonyms(term)
+				term_dict["blacklist"].extend(list(synonyms))
 			else :
-				term_dict["standard"].append(term)
-		# input(term_dict)
+				synonyms=self.ingredient_handler.get_synonyms(term)
+				term_dict["standard"].extend(list(synonyms))
+		input(term_dict)
 		return term_dict
 
 	#menu for search options
