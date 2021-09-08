@@ -812,7 +812,7 @@ class drink_index :
 			else :
 				synonyms=self.ingredient_handler.get_synonyms(term)
 				term_dict["standard"].extend(list(synonyms))
-		input(term_dict)
+		# input(term_dict)
 		return term_dict
 
 	#menu for search options
