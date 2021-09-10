@@ -1,15 +1,18 @@
 import pickle
-import readchar
 import time
 import os
 import math
 import re
 import numpy as np
+import readchar
+
+
 
 class menu_generator :
 
 	def __init__(self) :
 		self.message="q to return"
+
 
 	def visualize_menu(self, options, index, instructions="") :
 		os.system('clear')
@@ -66,12 +69,11 @@ class color:
 
 
 class unit_converter :
-
 	# conversions={"oz":1.0,"ounce":1.0,"tsp":0.166, "teaspoon":0.166,"tbl":0.5, "tablespoon":0.5, "dashes":0.03125,  "dash":0.03125, "drops":0.00169, "drops":0.00169, "cube":0.166, "leaves":0.0176, "leaf":0.0176,"sprig":0.176,"barspoon":0.1666, "slices":0.07168573,"slice":0.07168573,"wedges":0.166,"wedge":0.166,"ml":0.033814,"cl":0.33814}
 
 	def __init__(self,units="oz") :
 		self.units=units
-		self.conversions={"oz":1.0,"ounce":1.0,"tsp":0.166, "teaspoon":0.166,"tbl":0.5, "tablespoon":0.5, "dashes":0.03125,  "dash":0.03125, "drops":0.00169, "drops":0.00169, "cube":0.166, "leaves":0.0176, "leaf":0.0176,"sprig":0.176,"barspoon":0.1666, "slices":0.07168573,"slice":0.07168573,"wedges":0.166,"wedge":0.166,"ml":0.033814,"cl":0.33814}
+		self.conversions={"oz":1.0,"ounce":1.0,"tsp":0.166, "teaspoon":0.166,"tbl":0.5, "tablespoon":0.5, "dashes":0.03125,  "dash":0.03125, "drops":0.00169, "drops":0.00169, "cube":0.166, "leaves":0.0176, "leaf":0.0176,"sprig":0.176,"barspoon":0.1666, "slices":0.07168573,"slice":0.07168573,"wedges":0.166,"wedge":0.166,"ml":0.033814,"cl":0.33814, "egg":1.05}
 
 	#pass in unit its coming from
 	def to_oz(self,value, unit) :
@@ -367,7 +369,7 @@ class recipe :
 
 
 class drink_index :
-	def __init__(self, recipes_file="recipes.p", cabinet_file="cabinet.p") :
+	def __init__(self, recipes_file="recipes.p", cabinet_file="cabinet.p", interactive=True) :
 		self.recipes_file=recipes_file
 		self.cabinet_file=cabinet_file
 		self.local_recipes_file=recipes_file.strip(".p") + "_local.p"
@@ -403,6 +405,8 @@ class drink_index :
 		self.curr_method=None;
 		self.last_page_number=None
 		self.last_search=""
+		# if interactive :
+
 		self.menu=menu_generator()
 
 		self.ingredient_handler=ingredient_handler()
