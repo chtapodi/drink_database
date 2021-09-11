@@ -369,30 +369,20 @@ class recipe :
 
 
 class drink_index :
-	def __init__(self, recipes_file="recipes.p", cabinet_file="cabinet.p", interactive=True) :
+	def __init__(self, recipes_file="recipes.p",local_data_file="local_data.p", interactive=True) :
 		self.recipes_file=recipes_file
-		self.cabinet_file=cabinet_file
+		# self.cabinet_file=cabinet_file
+		self.local_data_file=local_data_file
 		self.local_recipes_file=recipes_file.strip(".p") + "_local.p"
 
 
 		self.recipes={}
 		self.recipes= pickle.load( open( self.recipes_file, "rb" ) )
-		# try :
-		# 	self.recipes= pickle.load( open( self.recipes_file, "rb" ) )
-		# except Exception :
-		# 	pass
 
 		#load in local recipes (for syncing)
 		recipes_local={}
 		try :
 			recipes_local= pickle.load( open( self.local_recipes_file, "rb" ) )
-		except Exception :
-			pass
-
-		#load in cabinet data
-		self.cabinet=[]
-		try :
-			self.cabinet= pickle.load( open( self.cabinet_file, "rb" ) )
 		except Exception :
 			pass
 
@@ -405,7 +395,16 @@ class drink_index :
 		self.curr_method=None;
 		self.last_page_number=None
 		self.last_search=""
-		# if interactive :
+
+		self.bookmarks=[]
+		self.previously_made=[]
+		try :
+			local_data= pickle.load( open( self.local_data_file, "rb" ) )
+			self.cabinet=local_data["cabinet"]
+			self.bookmarks=local_data["bookmarks"]
+			self.previously_made=local_data["previously_made"]
+		except Exception :
+			pass
 
 		self.menu=menu_generator()
 
@@ -640,10 +639,22 @@ class drink_index :
 			input()
 			pass
 
+	#returns string to display based on if the entry is bookmarked or not
+	def get_bookmark_status(self, entry) :
+		if entry.id in self.bookmarks :
+			return "unbookmark"
+		return "bookmark"
+
+	def toggle_bookmark(self,entry) :
+		if entry.id in self.bookmarks :
+			self.bookmarks.remove(entry.id)
+		else :
+			self.bookmarks.append(entry.id)
+
 	#Shows the options for a drink as well as the recipe
 	def drink_menu(self, entry) :
-		menu_options=["rate","add notes", "edit"]
-		menu_executions=[self.add_rating,self.add_note,self.edit_drink_menu]
+		menu_options=["rate","add notes", "{}".format(self.get_bookmark_status(entry)),"edit"]
+		menu_executions=[self.add_rating,self.add_note,self.toggle_bookmark,self.edit_drink_menu]
 
 		while True :
 			selection=self.menu.menu(menu_options, str(entry)+entry.notes)
@@ -786,9 +797,12 @@ class drink_index :
 
 	def get_cabinet(self) :
 		full_cabinet=set()
+
 		for item in self.cabinet:
 			synonyms=self.ingredient_handler.get_synonyms(item)
 			full_cabinet=set.union(full_cabinet,synonyms)
+		# input(full_cabinet)
+
 		return list(full_cabinet)
 
 
@@ -901,14 +915,17 @@ class drink_index :
 		sorted_ingredients={k: v for k, v in sorted(ingredient_counts.items(), key=lambda item: item[1][0], reverse=True)}
 		return sorted_ingredients
 
+
+	#TODO split out and sort by completion
 	def show_missing_ingredients(self) :
 		all_ingredients=self.generate_ingredient_list()
 		missing_ingredients_text=[]
 		missing_ingredients_recipes=[]
+		full_cabinet=self.get_cabinet()
 
 		#generates lists of ingredient texts and recipes
 		for ingredient in all_ingredients.keys() :
-			if ingredient not in self.cabinet :
+			if ingredient not in full_cabinet :
 				text="{0} {1}".format(all_ingredients[ingredient][0],ingredient)
 				missing_ingredients_text.append(text)
 				missing_ingredients_recipes.append(all_ingredients[ingredient][1])
@@ -937,11 +954,18 @@ class drink_index :
 				break
 
 
+	def show_bookmarked(self) :
+		ids=self.bookmarks
+		recipes=[self.recipes[id] for id in ids]
+
+		self.list_drinks(recipe_list=recipes, title="bookmarked\n")
+
+
 	#Runs main menu
 	def main_menu(self) :
 		while True :
-			menu_options=["input drink", "search", "show missing ingredients","edit liquor cabinet", "list drinks"]
-			menu_executions=[self.input_drink,self.search_menu, self.show_missing_ingredients,self.edit_cabinet, self.list_drinks]
+			menu_options=["input drink", "search", "show missing ingredients","show bookmarked recipes","edit cabinet", "list drinks"]
+			menu_executions=[self.input_drink,self.search_menu, self.show_missing_ingredients,self.show_bookmarked,self.edit_cabinet, self.list_drinks]
 
 
 			info="current book: {0}\ncurrent method: {1}".format(self.curr_book, self.curr_method)
@@ -958,4 +982,10 @@ class drink_index :
 
 	def backup(self) :
 		self.backup_recipes()
-		pickle.dump( self.cabinet, open( self.cabinet_file, "wb" ) )
+		# pickle.dump( self.cabinet, open( self.cabinet_file, "wb" ) )
+
+		local_data={}
+		local_data["cabinet"]=self.cabinet
+		local_data["bookmarks"]=self.bookmarks
+		local_data["previously_made"]=self.previously_made
+		pickle.dump( local_data, open( self.local_data_file, "wb" ) )

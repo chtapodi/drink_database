@@ -6,9 +6,12 @@ def main() :
 	try :
 		#starts the UI
 		drinks.main_menu()
-	except Exception :
+	except Exception as e:
+		input(e)
 		drinks.backup()
 		pass
+	drinks.backup()
+
 
 
 
