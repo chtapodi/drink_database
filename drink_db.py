@@ -652,6 +652,7 @@ class drink_index :
 			self.bookmarks.remove(entry.id)
 		else :
 			self.bookmarks.append(entry.id)
+		# return True
 
 	#Shows the options for a drink as well as the recipe
 	def drink_menu(self, entry) :
@@ -659,6 +660,7 @@ class drink_index :
 		menu_executions=[self.add_rating,self.add_note,self.toggle_bookmark,self.edit_drink_menu]
 
 		while True :
+			menu_options=["rate","add notes", "{}".format(self.get_bookmark_status(entry)),"edit"]
 			selection=self.menu.menu(menu_options, str(entry)+entry.notes)
 			if selection!=None :
 				return_val=menu_executions[selection](entry)
@@ -689,7 +691,7 @@ class drink_index :
 
 				else :
 					self.drink_menu(recipe_list[(i*items_per_page)+selection])
-					recipe_list=list(self.recipes.values())
+					# recipe_list=list(self.recipes.values()) #why did this exist?
 
 				if num_pages!=0 : #stops modulo by 0 error
 					i=i%(num_pages)
@@ -978,8 +980,8 @@ class drink_index :
 	#Runs main menu
 	def main_menu(self) :
 		while True :
-			menu_options=["input drink", "search", "show missing ingredients","show bookmarked recipes","edit cabinet", "list drinks"]
-			menu_executions=[self.input_drink,self.search_menu, self.show_missing_ingredients,self.show_bookmarked,self.edit_cabinet, self.list_drinks]
+			menu_options=["search", "show missing ingredients","show bookmarked recipes","edit cabinet", "input drink", "list drinks"]
+			menu_executions=[self.search_menu, self.show_missing_ingredients,self.show_bookmarked,self.edit_cabinet,self.input_drink, self.list_drinks]
 
 
 			info="current book: {0}\ncurrent method: {1}".format(self.curr_book, self.curr_method)
