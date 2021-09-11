@@ -286,7 +286,7 @@ class recipe :
 		data=color.BOLD +color.BLUE+ self.name+ color.END + "\n " +self.book+"\n "+color.CYAN+ "page "+str(self.page) +"\n " +self.method +color.END
 		rating=self.get_rating()
 		if rating!=None :
-			data+="\n rated {}/5".format(rating)
+			data+="\n rated {:.2f}/5".format(rating)
 		return data
 
 	#returns a string represenation of the recipe
@@ -399,12 +399,14 @@ class drink_index :
 		self.last_search=""
 		self.bookmarks=[]
 		self.previously_made=[]
+		self.ratings={}
 		try :
 			local_data= pickle.load( open( self.local_data_file, "rb" ) )
 			self.cabinet=local_data["cabinet"]
 			self.bookmarks=local_data["bookmarks"]
 			self.previously_made=local_data["previously_made"]
 			self.last_search=local_data["last_search"]
+			self.ratings=local_data["ratings"]
 		except Exception :
 			pass
 
@@ -636,6 +638,7 @@ class drink_index :
 		try:
 			new_rating=float(input("enter rating out of 5\n"))
 			entry.add_rating(new_rating)
+			self.ratings[entry.id]=new_rating
 		except Exception as e:
 			print(e)
 			input()
@@ -1005,4 +1008,5 @@ class drink_index :
 		local_data["bookmarks"]=self.bookmarks
 		local_data["previously_made"]=self.previously_made
 		local_data["last_search"]=self.last_search
+		local_data["last_search"]=self.ratings
 		pickle.dump( local_data, open( self.local_data_file, "wb" ) )
