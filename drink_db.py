@@ -114,12 +114,26 @@ class ingredient_handler :
 
 		self.unit_converter=unit_converter(units)
 
+		# self.available_ingredients=[]
+		# for ingredient in self.ingredients :
+
+	#this checks if a recipe can be made with the available ingredients
+	def check_recipe(self,recipe) :
+		for ingredient_name in recipe.ingredients.keys() :
+			# input(ingredient_name)
+			if self.find_ingredient(ingredient_name)==None :
+				return False
+		return True
+
 	def find_ingredient(self,name) :
+		# input(self.ingredients)
 		for ingredient in self.ingredients :
+			# input(ingredient)
 			if name in ingredient.names :
 				return ingredient
 		return None
 
+	#returns all synonyms for an ingredients name
 	def get_synonyms(self,name) :
 		for synonym_set in self.synonyms:
 			if name in synonym_set :
@@ -127,6 +141,7 @@ class ingredient_handler :
 		return {name}
 
 
+	#scales the vector to match the percentage that it makes up of the recipe
 	def get_scaled_vector(self,name,value,unit,drink_volume) :
 		value=self.unit_converter.convert(value,unit)
 		scale_factor=value/drink_volume
@@ -139,7 +154,7 @@ class ingredient_handler :
 		# print("Scaled vector\n",scaled_vector.names)
 		return scaled_vector
 
-
+	#gets the total volume of the drink
 	def get_drink_volume(self,ingredient_list) :
 		uc=unit_converter('oz')
 		volume=0
@@ -166,16 +181,18 @@ class ingredient_handler :
 			vector_list.append(ingredient_vector.get_flavors())
 		return np.sum(vector_list,axis=0)
 
+	#The one stop shop. Calculates vectors for each ingredient, returns a summed vector for the whole thing
+	#returns false if the required ingredients are not available
 	def get_recipe_vector(self,recipe) :
-		ingredient_vectors=self.get_recipe_vectors(recipe)
-		recipe_vector=self.sum_vectors(ingredient_vectors)
-		return recipe_vector
+		if self.check_recipe(recipe) :
+			ingredient_vectors=self.get_recipe_vectors(recipe)
+			recipe_vector=self.sum_vectors(ingredient_vectors)
+			return recipe_vector
+		return False
 
 
-
-
-
-class ingredient :
+'''Is an ingredient, includes information about the flavors this entails'''
+class vector_holder :
 	def __init__(self, names, flavor_vector=None, description="",tags=None) :
 		self.names=names
 		self.flavor_vectors=np.array([])
@@ -192,6 +209,7 @@ class ingredient :
 
 		self.vector_tags=tags
 
+	'''Returns the possible names assosciated with this vector'''
 	def get_names(self) :
 		return self.names
 
@@ -231,10 +249,12 @@ class ingredient :
 	# 	...
 
 	def __copy__(self) :
-		new=ingredient(self.get_names(),self.flavor_vectors,self.description,self.vector_tags)
+		new=vector_holder(self.get_names(),self.flavor_vectors,self.description,self.vector_tags)
 		return new
 
 	def __eq__(self,other) :
+		if other==None :
+			return False
 		for name in self.names :
 			if name in other.get_names() :
 				return True
@@ -600,6 +620,14 @@ class drink_index :
 		except KeyboardInterrupt:
 			pass
 
+		#edits an entry page
+	def edit_method(self, entry) :
+		try :
+			method=input("new method: ")
+			if method!="" :
+				entry.method=method
+		except KeyboardInterrupt:
+			pass
 
 		#edits an entry page
 	def edit_name(self, entry) :
@@ -611,14 +639,14 @@ class drink_index :
 				entry.id=entry.book+"_"+entry.name
 				self.add_recipe(entry)
 
-
 		except KeyboardInterrupt:
 			pass
 
 	#Generates and shows a menu for editing an entry
 	def edit_drink_menu(self, entry) :
-		menu_options=["edit name","edit ingredients","edit page", "edit book", "delete"]
-		menu_executions=[self.edit_name, self.input_recipe_ingredients,self.edit_page,self.edit_book,self.remove_entry]
+
+		menu_options=["edit name","edit ingredients","edit page", "edit book", "edit method","delete"]
+		menu_executions=[self.edit_name, self.input_recipe_ingredients,self.edit_page,self.edit_book,self.edit_method,self.remove_entry]
 
 		selection=self.menu.menu(menu_options, str(entry)+entry.notes)
 		if selection!=None :
@@ -658,13 +686,21 @@ class drink_index :
 			self.bookmarks.append(entry.id)
 		# return True
 
+
+	# def
+
 	#Shows the options for a drink as well as the recipe
 	def drink_menu(self, entry) :
-		menu_options=["rate","add notes", "{}".format(self.get_bookmark_status(entry)),"edit"]
-		menu_executions=[self.add_rating,self.add_note,self.toggle_bookmark,self.edit_drink_menu]
+		is_available=self.ingredient_handler.get_recipe_vector(entry)
 
 		while True :
-			menu_options=["rate","add notes", "{}".format(self.get_bookmark_status(entry)),"edit"]
+			if is_available is not False:
+				menu_options=["rate","add notes", "{}".format(self.get_bookmark_status(entry)),"find most similar","edit"]
+				menu_executions=[self.add_rating,self.add_note,self.toggle_bookmark,self.show_most_similar,self.edit_drink_menu]
+			else :
+				menu_options=["rate","add notes", "{}".format(self.get_bookmark_status(entry)),"edit"]
+				menu_executions=[self.add_rating,self.add_note,self.toggle_bookmark,self.edit_drink_menu]
+			# menu_options=["rate","add notes", "{}".format(self.get_bookmark_status(entry)),"edit"]
 			selection=self.menu.menu(menu_options, str(entry)+entry.notes)
 			if selection!=None :
 				return_val=menu_executions[selection](entry)
@@ -673,6 +709,60 @@ class drink_index :
 			else :
 				break
 
+	#This is disgustingly innefficiant, will fix
+	def get_closest_recipe(self,recipe,recipe_list) :
+		recipe_vector=self.ingredient_handler.get_recipe_vector(recipe)
+		dist = np.linalg.norm(recipe_vector-self.ingredient_handler.get_recipe_vector(recipe_list[0]))
+		closest=recipe_list[0]
+		for comp_recipe in recipe_list[1:] :
+			if comp_recipe.id != recipe.id :
+				# comp_vector=
+				new_dist = np.linalg.norm(recipe_vector-self.ingredient_handler.get_recipe_vector(comp_recipe))
+				if new_dist<dist :
+					dist=new_dist
+					closest=comp_recipe
+		return closest
+
+	#Gets the N most similar recipes from available recipes
+	def get_N_most_similar(self,entry,N=6) :
+		recipe_list=self.get_vectorizable_list()
+		# vector_pair_list=zip(recipe_list,vector_list)
+		similar_list=[]
+		# entry_vector=self.ingredient_handler.get_recipe_vector(entry)
+		# entry_pair=(entry,entry_vector)
+
+		while len(recipe_list)>0 and len(similar_list)<N:
+
+			# current_vector=similar_list[-1]
+			closest=self.get_closest_recipe(entry,recipe_list)
+			# i=vector_list.index(closest)
+			similar_list.append(recipe_list.pop(recipe_list.index(closest)))
+			# vector_list.pop(i)
+
+		return similar_list
+
+	def show_most_similar(self,entry) :
+		similar_list=self.get_N_most_similar(entry)
+		self.list_drinks(recipe_list=similar_list, title="Most similar to {}\n".format(entry.name))
+
+
+
+	#returns the data of all recipes that contain only ingredients with flavor profiles
+	def get_vectorizable_list(self) :
+		all_recipes=self.get_recipe_list()
+		vectorizable=[]
+		# recipe_vectors=[]
+		for recipe in all_recipes :
+			vector=self.ingredient_handler.get_recipe_vector(recipe)
+			if vector is not False :
+				vectorizable.append(recipe)
+				# recipe_vectors.append(vector)
+
+		return vectorizable
+
+
+
+	#gets a list of all the recipes in the data_base
 	def get_recipe_list(self) :
 		return list(self.recipes.values())
 
