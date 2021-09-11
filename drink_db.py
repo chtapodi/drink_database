@@ -407,7 +407,8 @@ class drink_index :
 			self.previously_made=local_data["previously_made"]
 			self.last_search=local_data["last_search"]
 			self.ratings=local_data["ratings"]
-		except Exception :
+		except Exception as e:
+			input(e)
 			pass
 
 		self.menu=menu_generator()
@@ -711,8 +712,17 @@ class drink_index :
 		to_include=search_terms["priority"]+search_terms["standard"]
 		blacklist=search_terms["blacklist"]
 
+
+
 		found_list=[]
 		search_list=self.get_recipe_list()
+		# input(search_terms)
+		if len(search_terms["group"])>0:
+			in_group=[]
+			for recipe in search_list :
+				if recipe.id in search_terms["group"] :
+					in_group.append(recipe)
+			search_list=in_group
 
 		if len(priority)>0 :
 			has_priority=[]
@@ -749,6 +759,13 @@ class drink_index :
 
 		search_list=self.get_recipe_list()
 		found_list=[]
+
+		if len(search_terms["group"])>0:
+			in_group=[]
+			for recipe in search_list :
+				if recipe.id in search_terms["group"] :
+					in_group.append(recipe)
+			search_list=in_group
 
 		#priority ingredients
 		if len(priority)>0 :
@@ -819,7 +836,7 @@ class drink_index :
 
 	#organizes search terms
 	def parse_search(self, search_terms) :
-		term_dict={"priority":[],"standard":[],"blacklist":[]}
+		term_dict={"priority":[],"standard":[],"blacklist":[],"group":[]}
 		term_list=search_terms.split(',')
 		#solves white space
 		term_list=[t.strip() for t in term_list]
@@ -827,6 +844,25 @@ class drink_index :
 		if "$cabinet" in term_list :
 			term_dict["standard"].extend(self.get_cabinet())
 			term_list.remove("$cabinet")
+
+		if "$bookmark" in term_list or  "$bookmarks" in term_list:
+			term_dict["group"].extend(self.bookmarks)
+			try :
+				term_list.remove("$bookmark")
+			except :
+				pass
+			try :
+				term_list.remove("$bookmarks")
+			except :
+				pass
+
+		if "$rated" in term_list :
+			term_dict["group"].extend(self.ratings.keys())
+			try :
+				term_list.remove("$bookmark")
+			except :
+				pass
+
 
 		for term in term_list :
 			# term=term.strip()
@@ -1008,5 +1044,5 @@ class drink_index :
 		local_data["bookmarks"]=self.bookmarks
 		local_data["previously_made"]=self.previously_made
 		local_data["last_search"]=self.last_search
-		local_data["last_search"]=self.ratings
+		local_data["ratings"]=self.ratings
 		pickle.dump( local_data, open( self.local_data_file, "wb" ) )
