@@ -5,6 +5,7 @@ import math
 import re
 import numpy as np
 import readchar
+import readline
 
 
 
@@ -394,8 +395,8 @@ class drink_index :
 		self.curr_book=None;
 		self.curr_method=None;
 		self.last_page_number=None
-		self.last_search=""
 
+		self.last_search=""
 		self.bookmarks=[]
 		self.previously_made=[]
 		try :
@@ -403,6 +404,7 @@ class drink_index :
 			self.cabinet=local_data["cabinet"]
 			self.bookmarks=local_data["bookmarks"]
 			self.previously_made=local_data["previously_made"]
+			self.last_search=local_data["last_search"]
 		except Exception :
 			pass
 
@@ -711,7 +713,10 @@ class drink_index :
 			has_priority=[]
 			for recipe in search_list:
 				ingredient_list=recipe.get_ingredients()
-				if(all(ingredient in ingredient_list for ingredient in priority)): #if recipe contains all required
+				synonym_list=[]
+				#this is to make sure that all ingredients that are required dont require every synonym to be in it, which will not happen
+				for i in ingredient_list :
+					synonym_list.extend(self.ingredient_handler.get_synonyms(i))
 					has_priority.append(recipe)
 			search_list=has_priority #don't need to search the rest
 
@@ -811,18 +816,21 @@ class drink_index :
 	def parse_search(self, search_terms) :
 		term_dict={"priority":[],"standard":[],"blacklist":[]}
 		term_list=search_terms.split(',')
-
+		#solves white space
+		term_list=[t.strip() for t in term_list]
 		#here I would add a decision to not fuzzy search
 		if "$cabinet" in term_list :
 			term_dict["standard"].extend(self.get_cabinet())
 			term_list.remove("$cabinet")
 
 		for term in term_list :
-			term=term.strip()
+			# term=term.strip()
 			if '*' in term :
 				term=term.replace('*','')
-				synonyms=self.ingredient_handler.get_synonyms(term)
-				term_dict["priority"].extend(list(synonyms))
+				#TODO: At the momment this is handled on the other end, because if they are
+				#all priority, then nothing will have them.
+				# synonyms=self.ingredient_handler.get_synonyms(term)
+				term_dict["priority"].append(term)
 			elif '!' in term :
 				term=term.replace('!','')
 				synonyms=self.ingredient_handler.get_synonyms(term)
@@ -848,8 +856,14 @@ class drink_index :
 
 					#Keeps previous search, not the most useful. Make it editable?
 					if(self.last_search!="") :
-						search_terms=input("search({}): ".format(self.last_search))
-						if search_terms!="" :
+						def hook():
+							readline.insert_text(self.last_search)
+							readline.redisplay()
+						readline.set_pre_input_hook(hook)
+						search_terms = input("search: ")
+						readline.set_pre_input_hook()
+						# search_terms=input("search({}): ".format(self.last_search))
+						if search_terms!="" and search_terms!=" " :
 							self.last_search=search_terms
 						else :
 							search_terms=self.last_search
@@ -988,4 +1002,5 @@ class drink_index :
 		local_data["cabinet"]=self.cabinet
 		local_data["bookmarks"]=self.bookmarks
 		local_data["previously_made"]=self.previously_made
+		local_data["last_search"]=self.last_search
 		pickle.dump( local_data, open( self.local_data_file, "wb" ) )
