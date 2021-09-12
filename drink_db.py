@@ -858,7 +858,6 @@ class drink_index :
 		blacklist=search_terms["blacklist"]
 
 
-
 		found_list=[]
 		search_list=self.get_recipe_list()
 		# input(search_terms)
@@ -877,6 +876,10 @@ class drink_index :
 				#this is to make sure that all ingredients that are required dont require every synonym to be in it, which will not happen
 				for i in ingredient_list :
 					synonym_list.extend(self.ingredient_handler.get_synonyms(i))
+				# print(priority)
+
+				if(all(val in synonym_list for val in priority)):
+
 					has_priority.append(recipe)
 			search_list=has_priority #don't need to search the rest
 
@@ -916,8 +919,15 @@ class drink_index :
 		if len(priority)>0 :
 			has_priority=[]
 			for recipe in search_list:
-				ingredient_list=keyword_function(recipe)
-				if(all(ingredient in ingredient_list for ingredient in priority)): #if recipe contains all required
+				ingredient_list=recipe.get_ingredients()
+				synonym_list=[]
+				#this is to make sure that all ingredients that are required dont require every synonym to be in it, which will not happen
+				for i in ingredient_list :
+					synonym_list.extend(self.ingredient_handler.get_synonyms(i))
+				# print(priority)
+
+				if(all(val in synonym_list for val in priority)):
+
 					has_priority.append(recipe)
 			search_list=has_priority #don't need to search the rest
 
@@ -1151,7 +1161,7 @@ class drink_index :
 			completion_values.append(item[2])
 
 		ingredient_list=ingredient_counts.keys() #yes this naming is confusing
-	
+
 		data=list(map(list, zip(*[ingredient_list,counts,recipe_list])))
 
 		sorted_data=self.sort_by_weights(data,completion_values)
@@ -1182,7 +1192,7 @@ class drink_index :
 			num_pages=math.ceil(len(missing_ingredients_text)/items_per_page)
 			menu_options=missing_ingredients_text[(i*items_per_page):(i*items_per_page)+items_per_page]
 
-			selection=self.menu.menu(menu_options,"page {0}/{1}".format(i+1,num_pages),sideways=True)
+			selection=self.menu.menu(menu_options,"{2}\npage {0}/{1}".format(i+1,num_pages,"ingredients sorted by how many drinks it will complete"),sideways=True)
 			if selection!=None :
 				if(selection=="right") :
 					i+=1
