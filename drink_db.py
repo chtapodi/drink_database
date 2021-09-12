@@ -1037,7 +1037,7 @@ class drink_index :
 		#This is fun
 		#options for each search term, seperated by ,
 		#must include
-		info="use:\n*ingredient to make it required\n!ingredient to blacklist\n$cabinet to include liquor cabinet\nseperate with ,"
+		info="use:\n*ingredient to make it required\n!ingredient to 	blacklist\n$cabinet to include liquor cabinet\n$bookmark to limit to bookmarked items\n$rated to limit to rated items\n$vector to only show recipes with full vectors\nseperate with ,"
 		while True :
 			try :
 				menu_options=["subset of search", "include at least one ingredient search","include at least one keyword search", "name search"]
@@ -1106,34 +1106,74 @@ class drink_index :
 	def edit_cabinet(self) :
 		self.edit_list(self.cabinet,items_per_page=6)
 
+	#Sort by weighted values
+	def sort_by_weights(self,to_sort,weights) :
+		return [x for _,x in sorted(zip(weights,to_sort), reverse=True)]
+
+#sorting algorithm
+#iterating over recipes:ingredients in recipe
+#increment ingredient line_count
+#for each recipe get ingredients that are not in cabinet
+#if not_have+1/total_ingredients
 #generates and returns a dict that has all ingredients, including and sorted by number of instances, with a list of recipes that include it
 	def generate_ingredient_list(self) :
-		ingredient_counts={} #ingredient;[count, [recipes]]
+		cabinet_ingredients=self.get_cabinet()
+
+		ingredient_counts={} #ingredient;[count, [recipes,...],recipe % sum]
 		for entry in self.recipes.values() :
-			for ingredient in entry.get_ingredients() :
+			entry_ingredients=entry.get_ingredients()
+			remaining_ingredients=[]
+			for ingredient in entry_ingredients:
+				#for calculating percentage
+				if ingredient not in cabinet_ingredients :
+					remaining_ingredients.append(ingredient)
+
 				if ingredient in ingredient_counts.keys() : #if its already been entered
 					ingredient_counts[ingredient][0]+=1 #add to count
 					ingredient_counts[ingredient][1].append(entry) #add entry to list
 				else : #if new ingredient
-					ingredient_counts[ingredient]=[1,[entry]]
+					ingredient_counts[ingredient]=[1,[entry],0.0]
 
-		sorted_ingredients={k: v for k, v in sorted(ingredient_counts.items(), key=lambda item: item[1][0], reverse=True)}
-		return sorted_ingredients
+			#Calculate percentage
+			#I do not see why it would have no remaining_ingredients, but just in case
+			if len(remaining_ingredients)>0 :
+				value=(len(remaining_ingredients)+1)/len(entry_ingredients)
+				for ingredient in remaining_ingredients :
+					ingredient_counts[ingredient][2]+=value
+
+
+		counts=[]
+		recipe_list=[]
+		completion_values=[]
+		for item in ingredient_counts.values() :
+			counts.append(item[0])
+			recipe_list.append(item[1])
+			completion_values.append(item[2])
+
+		ingredient_list=ingredient_counts.keys() #yes this naming is confusing
+	
+		data=list(map(list, zip(*[ingredient_list,counts,recipe_list])))
+
+		sorted_data=self.sort_by_weights(data,completion_values)
+
+		return sorted_data
+
 
 
 	#TODO split out and sort by completion
 	def show_missing_ingredients(self) :
-		all_ingredients=self.generate_ingredient_list()
+		data=self.generate_ingredient_list()
+		(all_ingredients,counts,recipe_list) = zip(*data)
 		missing_ingredients_text=[]
 		missing_ingredients_recipes=[]
 		full_cabinet=self.get_cabinet()
 
 		#generates lists of ingredient texts and recipes
-		for ingredient in all_ingredients.keys() :
-			if ingredient not in full_cabinet :
-				text="{0} {1}".format(all_ingredients[ingredient][0],ingredient)
+		for ingredient,count,recipes in zip(all_ingredients,counts,recipe_list) :
+			if ingredient not in full_cabinet : #is this not redundant?
+				text="{0} {1}".format(count,ingredient)
 				missing_ingredients_text.append(text)
-				missing_ingredients_recipes.append(all_ingredients[ingredient][1])
+				missing_ingredients_recipes.append(recipes)
 
 		#display
 		i=0
