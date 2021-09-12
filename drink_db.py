@@ -6,6 +6,7 @@ import re
 import numpy as np
 import readchar
 import readline
+import csv
 
 
 
@@ -100,6 +101,9 @@ class unit_converter :
 class ingredient_handler :
 
 	def __init__(self, ingredient_file="ingredients.p",synonym_file="synonyms.p", units='oz') :
+
+		self.vector_tags=["alcohol percent","roughness","savory","sweet","acidic/sour","carbonated","dry","smokey","grassy","herby","woody","earthy","cereal","yeasty","malty","nutty","carmelized","bitter","astringent","almond/cherry/benzaldehyde","vanilla","licorice","spicy","limonene","citral","mint","floral","fruity-apple","fruity-apricot","fruity-pineapple"]
+
 		self.synonyms=[]
 		try :
 			self.synonyms= pickle.load( open( synonym_file, "rb" ) )
@@ -107,6 +111,7 @@ class ingredient_handler :
 			pass
 
 		self.ingredients=[]
+		self.update_vectors()
 		try :
 			self.ingredients= pickle.load( open( ingredient_file, "rb" ) )
 		except:
@@ -114,8 +119,51 @@ class ingredient_handler :
 
 		self.unit_converter=unit_converter(units)
 
-		# self.available_ingredients=[]
-		# for ingredient in self.ingredients :
+
+
+	def update_vectors(self) :
+		def generate_ingredient(csv_row) :
+			vector=[]
+			for x in csv_row[2:] :
+				# print(x)
+				if x=='' :x=0.0
+				# print(int(x))
+				x=float(x)
+				vector.append(x)
+			#map between 0 and 1
+			alc_perc=csv_row[2]
+			if alc_perc=='' :alc_perc=0.0
+			attr=[x/5.0 for x in vector[1:] ]
+
+			vector=[float(alc_perc)]
+			vector.extend(attr)
+			# print(vector)
+			name=csv_row[0].strip().lower()
+			names=self.get_synonyms(name)
+
+			description=csv_row[1]
+			# print(names)
+			new_ingredient=vector_holder(names,vector,description,tags=self.vector_tags)
+			return new_ingredient
+
+		with open('ingredient_vectors.csv') as csv_file:
+			csv_reader = csv.reader(csv_file, delimiter=',')
+			line_count = 0
+			for row in csv_reader:
+				if row[0]!='' :
+					new_ingredient=generate_ingredient(row)
+					#check if ingredient already exists in list
+					if new_ingredient in self.ingredients :
+						ing_index=self.ingredients.index(new_ingredient)
+						existing_ingredient=self.ingredients[ing_index]
+						existing_ingredient.add_vector(new_ingredient.flavor_vectors)
+
+					else :
+						self.ingredients.append(new_ingredient)
+				line_count+=1
+		pickle.dump( self.ingredients, open( "ingredients.p", "wb" ) )
+
+
 
 	#this checks if a recipe can be made with the available ingredients
 	def check_recipe(self,recipe) :
@@ -139,6 +187,13 @@ class ingredient_handler :
 			if name in synonym_set :
 				return synonym_set
 		return {name}
+
+	def get_available_ingredients(self) :
+		available=[]
+		for ingredient in self.ingredients :
+			available.extend(list(ingredient.get_names()))
+
+		return available
 
 
 	#scales the vector to match the percentage that it makes up of the recipe
@@ -930,10 +985,15 @@ class drink_index :
 		term_list=search_terms.split(',')
 		#solves white space
 		term_list=[t.strip() for t in term_list]
+
 		#here I would add a decision to not fuzzy search
 		if "$cabinet" in term_list :
 			term_dict["standard"].extend(self.get_cabinet())
 			term_list.remove("$cabinet")
+
+		if "$vector" in term_list :
+			term_dict["standard"].extend(self.ingredient_handler.get_available_ingredients())
+			term_list.remove("$vector")
 
 		if "$bookmark" in term_list or  "$bookmarks" in term_list:
 			term_dict["group"].extend(self.bookmarks)
