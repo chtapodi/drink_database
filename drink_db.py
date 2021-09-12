@@ -75,7 +75,7 @@ class unit_converter :
 
 	def __init__(self,units="oz") :
 		self.units=units
-		self.conversions={"oz":1.0,"ounce":1.0,"tsp":0.166, "teaspoon":0.166,"tbl":0.5, "tablespoon":0.5, "dashes":0.03125,  "dash":0.03125, "drops":0.00169, "drops":0.00169, "cube":0.166, "leaves":0.0176, "leaf":0.0176,"sprig":0.176,"barspoon":0.1666, "slices":0.07168573,"slice":0.07168573,"wedges":0.166,"wedge":0.166,"ml":0.033814,"cl":0.33814, "egg":1.05}
+		self.conversions={"oz":1.0,"ounce":1.0,"tsp":0.166, "teaspoon":0.166,"tbl":0.5, "tablespoon":0.5, "dashes":0.03125,  "dash":0.03125, "drops":0.00169, "drop":0.00169, "cube":0.166, "leaves":0.0176, "leaf":0.0176,"sprig":0.176,"barspoon":0.1666, "slices":0.07168573,"slice":0.07168573,"wedges":0.166,"wedge":0.166,"ml":0.033814,"cl":0.33814, "egg":1.05}
 
 	#pass in unit its coming from
 	def to_oz(self,value, unit) :
@@ -550,7 +550,7 @@ class drink_index :
 	#this finds the unit associated with the measurement and returns [quantity, unit, ingredient]
 	# TODO make it so it doesnt do dumb shit with dashes
 	def pull_units(self, ingredient) :
-		units=["oz","ounce","tsp", "teaspoon","tbl", "tablespoon", "dashes",  "dash", "drops", "drops" "cube", "leaves", "leaf","sprig","barspoon", "slices","slice","wedges","wedge","egg","ml","cl", "whole"]
+		units=["oz","ounce","tsp", "teaspoon","tbl", "tablespoon", "dashes",  "dash", "drops", "drop" "cube", "leaves", "leaf","sprig","barspoon", "slices","slice","wedges","wedge","egg","ml","cl", "whole"]
 
 		for unit in units :
 			if unit in ingredient :
@@ -828,15 +828,20 @@ class drink_index :
 		if(recipe_list==None) :
 			recipe_list=self.get_recipe_list()
 
+		title="{} results\n".format(len(recipe_list))+title
+
 		num_pages=math.ceil(len(recipe_list)/items_per_page)
 		while True :
 			menu_options=recipe_list[(i*items_per_page):(i*items_per_page)+items_per_page]
-			selection=self.menu.menu(menu_options,"{2}page {0}/{1}".format(i+1,num_pages,title),sideways=True)
+			inc=1
+			if num_pages==0 :inc=0
+			selection=self.menu.menu(menu_options,"{2}page {0}/{1}".format(i+inc,num_pages,title),sideways=True)
 			if selection!=None :
+
 				if(selection=="right") :
-					i+=1
+					i+=inc
 				elif(selection=="left") :
-					i-=1
+					i-=inc
 
 				else :
 					self.drink_menu(recipe_list[(i*items_per_page)+selection])
@@ -1075,7 +1080,7 @@ class drink_index :
 
 					parsed_terms=self.parse_search(search_terms)
 					drink_list=menu_executions[selection](parsed_terms)
-					self.list_drinks(drink_list,"{} results\n".format(len(drink_list)))
+					self.list_drinks(drink_list)
 				else :
 					break
 			except KeyboardInterrupt :
@@ -1129,7 +1134,7 @@ class drink_index :
 	def generate_ingredient_list(self) :
 		cabinet_ingredients=self.get_cabinet()
 
-		ingredient_counts={} #ingredient;[count, [recipes,...],recipe % sum]
+		ingredient_counts={} #ingredient;[count, [recipes,...],recipe % sum,completions]
 		for entry in self.recipes.values() :
 			entry_ingredients=entry.get_ingredients()
 			remaining_ingredients=[]
@@ -1142,27 +1147,31 @@ class drink_index :
 					ingredient_counts[ingredient][0]+=1 #add to count
 					ingredient_counts[ingredient][1].append(entry) #add entry to list
 				else : #if new ingredient
-					ingredient_counts[ingredient]=[1,[entry],0.0]
+					ingredient_counts[ingredient]=[1,[entry],0.0,0]
 
 			#Calculate percentage
-			#I do not see why it would have no remaining_ingredients, but just in case
 			if len(remaining_ingredients)>0 :
 				value=(len(remaining_ingredients)+1)/len(entry_ingredients)
+
 				for ingredient in remaining_ingredients :
+					if value==1 : ingredient_counts[ingredient][3]+=1
 					ingredient_counts[ingredient][2]+=value
 
 
 		counts=[]
 		recipe_list=[]
 		completion_values=[]
+		completions=[]
 		for item in ingredient_counts.values() :
 			counts.append(item[0])
 			recipe_list.append(item[1])
 			completion_values.append(item[2])
+			completions.append(item[3])
+
 
 		ingredient_list=ingredient_counts.keys() #yes this naming is confusing
 
-		data=list(map(list, zip(*[ingredient_list,counts,recipe_list])))
+		data=list(map(list, zip(*[ingredient_list,counts,recipe_list,completions])))
 
 		sorted_data=self.sort_by_weights(data,completion_values)
 
@@ -1173,15 +1182,15 @@ class drink_index :
 	#TODO split out and sort by completion
 	def show_missing_ingredients(self) :
 		data=self.generate_ingredient_list()
-		(all_ingredients,counts,recipe_list) = zip(*data)
+		(all_ingredients,counts,recipe_list,completions) = zip(*data)
 		missing_ingredients_text=[]
 		missing_ingredients_recipes=[]
 		full_cabinet=self.get_cabinet()
 
 		#generates lists of ingredient texts and recipes
-		for ingredient,count,recipes in zip(all_ingredients,counts,recipe_list) :
+		for ingredient,count,recipes,completion_val in zip(all_ingredients,counts,recipe_list,completions) :
 			if ingredient not in full_cabinet : #is this not redundant?
-				text="{0} {1}".format(count,ingredient)
+				text="{0}:{1} {2}".format(count,completion_val,ingredient)
 				missing_ingredients_text.append(text)
 				missing_ingredients_recipes.append(recipes)
 
