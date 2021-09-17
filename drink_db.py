@@ -5,9 +5,11 @@ import math
 import re
 import numpy as np
 import readchar
-import readline
 import csv
-
+try :
+	import readline
+except :
+	pass
 
 
 class menu_generator :
@@ -75,7 +77,7 @@ class unit_converter :
 
 	def __init__(self,units="oz") :
 		self.units=units
-		self.conversions={"oz":1.0,"ounce":1.0,"tsp":0.166, "teaspoon":0.166,"tbl":0.5, "tablespoon":0.5, "dashes":0.03125,  "dash":0.03125, "drops":0.00169, "drop":0.00169, "cube":0.166, "leaves":0.0176, "leaf":0.0176,"sprig":0.176,"barspoon":0.1666, "slices":0.07168573,"slice":0.07168573,"wedges":0.166,"wedge":0.166,"ml":0.033814,"cl":0.33814, "egg":1.05}
+		self.conversions={"oz":1.0,"ounce":1.0,"tsp":0.166, "teaspoon":0.166,"tbl":0.5, "tablespoon":0.5, "dashes":0.03125,  "dash":0.03125, "drops":0.00169, "drop":0.00169, "cube":0.166, "leaves":0.0176, "leaf":0.0176,"sprig":0.176,"barspoon":0.1666, "slices":0.07168573,"slice":0.07168573,"wedges":0.166,"wedge":0.166,"halves":1.0,"half":1.0,"whole":2.0,"wheel":0.083,"ml":0.033814,"cl":0.33814, "egg":1.05,"pinch":0.010,"pinches":0.010,"parts":1.0,"part":1.0}
 
 	#pass in unit its coming from
 	def to_oz(self,value, unit) :
@@ -87,10 +89,13 @@ class unit_converter :
 		ratio=self.conversions[unit]
 		return value/ratio
 
-	def convert(self, value, unit) :
-		if unit is not self.units :
+	def convert(self, value, unit,goal_unit=None) :
+
+		if goal_unit is None : goal_unit=self.units
+		# input("{} {} {}".format(value,unit,goal_unit))
+		if unit is not goal_unit :
 			in_oz=self.to_oz(value,unit)
-			in_unit=self.from_oz(in_oz,self.units)
+			in_unit=self.from_oz(in_oz,goal_unit)
 			return in_unit
 		else :
 			return value
@@ -197,8 +202,8 @@ class ingredient_handler :
 
 
 	#scales the vector to match the percentage that it makes up of the recipe
-	def get_scaled_vector(self,name,value,unit,drink_volume) :
-		value=self.unit_converter.convert(value,unit)
+	def get_scaled_vector(self,name,value,drink_volume) :
+		# value=self.unit_converter.convert(value,unit)
 		scale_factor=value/drink_volume
 		# print("scale_factor",scale_factor)
 		# print("name",name)
@@ -219,16 +224,29 @@ class ingredient_handler :
 			volume+= value
 		return volume
 
-	def get_recipe_vectors(self,recipe) :
+	def get_recipe_vectors(self,recipe,get_volumes=False) :
 		ingredient_vector_list=[]
 
 		ingredient_list=recipe.ingredients
+		volumes=[]
 		drink_volume=self.get_drink_volume(ingredient_list)
 		for ingredient, [value, unit] in ingredient_list.items() :
-			ingredient_vector=self.get_scaled_vector(ingredient,value,unit,drink_volume)
+			volume=self.unit_converter.convert(value,unit)
+			ingredient_vector=self.get_scaled_vector(ingredient,volume,drink_volume)
+			volumes.append(volume)
 			ingredient_vector_list.append(ingredient_vector)
 
-		return ingredient_vector_list
+
+		if get_volumes :
+			sum_volume=sum(volumes)
+			combined_list=[(v/sum_volume,x) for v,x in sorted(zip(volumes,ingredient_vector_list), key=lambda pair: pair[0],reverse=True)]
+			volume_list,vectors=zip(*combined_list)
+			return volume_list,vectors
+
+		else :
+			sorted_list=[x for _,x in sorted(zip(volumes,ingredient_vector_list), key=lambda pair: pair[0],reverse=True)]
+			return sorted_list
+
 
 	def sum_vectors(self,ingredient_vector_list) :
 		vector_list=[]
@@ -342,6 +360,8 @@ class recipe :
 		self.ingredients={} # substance:[value, unit, (OPTIONAL) ingredient_vector]
 		self.rating=[]
 		self.notes=""
+		self.unit_converter=unit_converter()
+
 
 	#adds ingredient to ingredient list
 	def add_ingredient(self, quantity, unit, substance) :
@@ -394,14 +414,23 @@ class recipe :
 	#returns a text list of ingredients
 	def get_ingredient_list(self) :
 		ingredient_list=[]
-		for ingredient in self.ingredients.keys() :
+		for ingredient in self.get_ingredients() :
 			text="{0} {1} {2}".format(self.ingredients[ingredient][0],self.ingredients[ingredient][1],ingredient)
 			ingredient_list.append(text)
 		return ingredient_list
 
 	#returns a list of just ingredients without quanities
-	def get_ingredients(self) :
-		return list(self.ingredients.keys())
+	def get_ingredients(self,units=None) :
+		ingredient_list=list(self.ingredients.keys())
+		# input(ingredient_list)
+		volumes=[]
+		for ingredient in ingredient_list :
+			converted_volume=self.unit_converter.convert(self.get_substance_unit(ingredient),self.get_substance_quantity(ingredient),units)
+			volumes.append(converted_volume)
+
+		sorted_list=[x for _,x in sorted(zip(volumes,ingredient_list), reverse=True)]
+		return sorted_list
+
 
 	#removes an ingredient
 	def remove_ingredient(self, ingredient_key) :
@@ -442,6 +471,10 @@ class recipe :
 	#kinda weird, but if the name is more than one word returns a list of it for searching
 	def get_name_list(self) :
 		return self.name.split()
+
+
+
+
 
 
 class drink_index :
@@ -588,7 +621,6 @@ class drink_index :
 		return [quantity, "oz", substance]
 
 
-
 	def parse_ingredient(self, ingredient) :
 		if ingredient=="q" :
 			return None
@@ -614,7 +646,7 @@ class drink_index :
 			except Exception :
 				input("Something you typed does not comply with formatting, try again")
 
-	#turn this into a menu
+
 	def input_recipe_ingredients(self, entry) :
 		ingredient=None
 		if len(entry.get_ingredients())==0 : #if it has no ingres yet
@@ -639,6 +671,8 @@ class drink_index :
 
 			else :
 				break
+
+
 
 	#adds a recipe to the index
 	def add_recipe(self, entry) :
