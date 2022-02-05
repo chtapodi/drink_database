@@ -25,3 +25,7 @@ Takes in a list of ingredients, returns all recipes that have at least one of th
 
 ### Subset of search search ###
 Returns only recipes that only have the ingredients that have been listed.
+
+
+## Syncing ##
+To sync recipes to another device, copy the `recipes.p` file to the new device and run `start_db.py` to combine recipes
