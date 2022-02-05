@@ -20,10 +20,15 @@ def process_synonyms(input_data) :
 	if not add_to_set(input_data) :
 		synonyms.append(set(input_data))
 
+print(synonyms)
 try :
 	while True :
 		input_data=input()
 		if len(input_data)>1:
+			if(input_data is "q") :
+				print("Exiting")
+				pickle.dump( synonyms, open( "synonyms.p", "wb" ) )
+				break
 			input_data=input_data.split(",")
 			input_data=[x.strip().lower() for x in input_data]
 			process_synonyms(input_data)

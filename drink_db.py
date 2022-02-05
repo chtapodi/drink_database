@@ -6,10 +6,7 @@ import re
 import numpy as np
 import readchar
 import csv
-try :
-	import readline
-except :
-	pass
+import readline
 
 
 class menu_generator :
@@ -224,6 +221,22 @@ class ingredient_handler :
 			volume+= value
 		return volume
 
+
+    #returns volumes (in percentage format) and ingredients
+	def get_volume_percentages(self,recipe) :
+		ingredient_vector_list=[]
+
+		ingredient_list=recipe.ingredients
+		volumes=[]
+		drink_volume=self.get_drink_volume(ingredient_list)
+		for ingredient, [value, unit] in ingredient_list.items() :
+			volume=self.unit_converter.convert(value,unit)
+			volumes.append(volume)
+
+		combined_list=[(v/drink_volume,x) for v,x in sorted(zip(volumes,ingredient_list), key=lambda pair: pair[0],reverse=True)]
+		volume_list,ingredients=zip(*combined_list)
+		return volume_list,ingredients
+
 	def get_recipe_vectors(self,recipe,get_volumes=False) :
 		ingredient_vector_list=[]
 
@@ -238,8 +251,7 @@ class ingredient_handler :
 
 
 		if get_volumes :
-			sum_volume=sum(volumes)
-			combined_list=[(v/sum_volume,x) for v,x in sorted(zip(volumes,ingredient_vector_list), key=lambda pair: pair[0],reverse=True)]
+			combined_list=[(v/drink_volume,x) for v,x in sorted(zip(volumes,ingredient_vector_list), key=lambda pair: pair[0],reverse=True)]
 			volume_list,vectors=zip(*combined_list)
 			return volume_list,vectors
 
@@ -264,8 +276,9 @@ class ingredient_handler :
 		return False
 
 
-'''Is an ingredient, includes information about the flavors this entails'''
 class vector_holder :
+	'''Is an ingredient, includes information about the flavors this entails'''
+
 	def __init__(self, names, flavor_vector=None, description="",tags=None) :
 		self.names=names
 		self.flavor_vectors=np.array([])
@@ -282,9 +295,13 @@ class vector_holder :
 
 		self.vector_tags=tags
 
-	'''Returns the possible names assosciated with this vector'''
 	def get_names(self) :
+		'''Returns the possible names assosciated with this vector'''
+
 		return self.names
+
+	def get_name(self) :
+		return list(self.names)[0]
 
 	def add_vector(self,new_vector) :
 		new_vector=np.array(new_vector)
@@ -474,13 +491,9 @@ class recipe :
 
 
 
-
-
-
 class drink_index :
 	def __init__(self, recipes_file="recipes.p",local_data_file="local_data.p", interactive=True) :
 		self.recipes_file=recipes_file
-		# self.cabinet_file=cabinet_file
 		self.local_data_file=local_data_file
 		self.local_recipes_file=recipes_file.strip(".p") + "_local.p"
 
@@ -504,9 +517,10 @@ class drink_index :
 		self.curr_method=None;
 		self.last_page_number=None
 
-		self.last_search=""
+		self.cabinet=[]
 		self.bookmarks=[]
 		self.previously_made=[]
+		self.last_search=""
 		self.ratings={}
 		try :
 			local_data= pickle.load( open( self.local_data_file, "rb" ) )
@@ -516,7 +530,8 @@ class drink_index :
 			self.last_search=local_data["last_search"]
 			self.ratings=local_data["ratings"]
 		except Exception as e:
-			input(e)
+			#No local data file generated as of yet
+			self.backup()
 			pass
 
 		self.menu=menu_generator()
@@ -581,7 +596,7 @@ class drink_index :
 			pass
 
 	#this finds the unit associated with the measurement and returns [quantity, unit, ingredient]
-	# TODO make it so it doesnt do dumb shit with dashes
+	# TODO make it so it doesnt do dumb stuff with dashes
 	def pull_units(self, ingredient) :
 		units=["oz","ounce","tsp", "teaspoon","tbl", "tablespoon", "dashes",  "dash", "drops", "drop" "cube", "leaves", "leaf","sprig","barspoon", "slices","slice","wedges","wedge","egg","ml","cl", "whole"]
 
@@ -646,7 +661,6 @@ class drink_index :
 			except Exception :
 				input("Something you typed does not comply with formatting, try again")
 
-
 	def input_recipe_ingredients(self, entry) :
 		ingredient=None
 		if len(entry.get_ingredients())==0 : #if it has no ingres yet
@@ -671,8 +685,6 @@ class drink_index :
 
 			else :
 				break
-
-
 
 	#adds a recipe to the index
 	def add_recipe(self, entry) :
@@ -752,6 +764,7 @@ class drink_index :
 			pass
 
 	#adds rating to entry
+	#TODO: implement better note system
 	def add_rating(self, entry) :
 		try:
 			new_rating=float(input("enter rating out of 5\n"))
@@ -776,7 +789,6 @@ class drink_index :
 		# return True
 
 
-	# def
 
 	#Shows the options for a drink as well as the recipe
 	def drink_menu(self, entry) :
@@ -798,7 +810,7 @@ class drink_index :
 			else :
 				break
 
-	#This is disgustingly innefficiant, will fix
+	#This is disgustingly innefficiant, will fix TODO
 	def get_closest_recipe(self,recipe,recipe_list) :
 		recipe_vector=self.ingredient_handler.get_recipe_vector(recipe)
 		dist = np.linalg.norm(recipe_vector-self.ingredient_handler.get_recipe_vector(recipe_list[0]))
@@ -817,8 +829,6 @@ class drink_index :
 		recipe_list=self.get_vectorizable_list()
 		# vector_pair_list=zip(recipe_list,vector_list)
 		similar_list=[]
-		# entry_vector=self.ingredient_handler.get_recipe_vector(entry)
-		# entry_pair=(entry,entry_vector)
 
 		while len(recipe_list)>0 and len(similar_list)<N:
 
@@ -835,7 +845,6 @@ class drink_index :
 		self.list_drinks(recipe_list=similar_list, title="Most similar to {}\n".format(entry.name))
 
 
-
 	#returns the data of all recipes that contain only ingredients with flavor profiles
 	def get_vectorizable_list(self) :
 		all_recipes=self.get_recipe_list()
@@ -848,7 +857,6 @@ class drink_index :
 				# recipe_vectors.append(vector)
 
 		return vectorizable
-
 
 
 	#gets a list of all the recipes in the data_base
@@ -889,9 +897,23 @@ class drink_index :
 				break
 
 
-	#drinks must be a subset of provided info. e.g. you must have all the ingredient
-	#TODO: make it so you can set a numbr of acceptable missing ingredients
+	def get_filter_lists(self) :
+		'''Returns a dictionary that has lists of recipes that this filter applies to'''
+		filters={}
+		filters["$cabinet"]=self.get_cabinet()
+		filters["$vector"]=self.ingredient_handler.get_available_ingredients()
+		filters["$bookmark"]=self.bookmarks
+		filters["$rated"]=self.ratings.keys()
+		return filters
+
+
+
+
+	#drinks must be a subset of provided info. e.g. you must have all the ingredients
+	#TODO: Make it so terms such as $rated and bookmark can be combined to only return the intersection of each group
+	#TODO: make it so you can set a number of acceptable missing ingredients
 	def subset_search(self, search_terms) :
+		''' Searches for a subset of search terms '''
 		priority=search_terms["priority"]
 		to_include=search_terms["priority"]+search_terms["standard"]
 		blacklist=search_terms["blacklist"]
@@ -906,6 +928,7 @@ class drink_index :
 				if recipe.id in search_terms["group"] :
 					in_group.append(recipe)
 			search_list=in_group
+
 
 		if len(priority)>0 :
 			has_priority=[]
@@ -922,11 +945,25 @@ class drink_index :
 					has_priority.append(recipe)
 			search_list=has_priority #don't need to search the rest
 
-		#checking if has all the ingredients
-		for recipe in search_list:
-			ingredient_list=recipe.get_ingredients()
-			if(all(ingredient in to_include for ingredient in ingredient_list)): #if all ingredients are in search list
-				found_list.append(recipe)
+
+		if len(to_include)>=1 :
+			#checking if has all the ingredients
+			for recipe in search_list:
+				ingredient_list=recipe.get_ingredients()
+				if(all(ingredient in to_include for ingredient in ingredient_list)): #if all ingredients are in search list
+					found_list.append(recipe)
+		else : #there are only filters
+			filters=self.get_filter_lists()
+
+			for recipe in search_list:
+				passed=True
+				for filter in search_terms["filters"] :
+					if recipe.id not in filters[filter] :
+						passed=False
+						break
+				if passed :
+					found_list.append(recipe)
+
 
 
 		if(len(blacklist))>0 :
@@ -940,6 +977,7 @@ class drink_index :
 
 	#searches for at least one item
 	def inclusive_search(self, search_terms, keyword_function) :
+		''' Searches for items with any search term '''
 		priority=search_terms["priority"]
 		to_include=search_terms["priority"]+search_terms["standard"]
 		blacklist=search_terms["blacklist"]
@@ -970,20 +1008,28 @@ class drink_index :
 					has_priority.append(recipe)
 			search_list=has_priority #don't need to search the rest
 
+		if len(to_include)<1 :
+			found_list=search_list
+		else :
 		#standard ingredients
-		for recipe in search_list :
-			ingredient_list=keyword_function(recipe)
-			for included in to_include :
-				if included in ingredient_list:
-					found_list.append(recipe)
-					break
+			for recipe in search_list :
+				ingredient_list=keyword_function(recipe)
+				for included in to_include :
+					if included in ingredient_list:
+						found_list.append(recipe)
+						break
+
 		#blacklisted ingredients
 		if(len(blacklist))>0 :
 			for recipe in found_list :
 				for blacklisted in blacklist :
 					if blacklisted in keyword_function(recipe) :
 						found_list.remove(recipe)
-		return self.sort_by_overlap(found_list, to_include, keyword_function)
+		#Handles edge cases with filter functions
+		try :
+			return self.sort_by_overlap(found_list, to_include, keyword_function)
+		except :
+			return found_list
 
 	#searches through recipes ingredients, returns sorted list
 	def ingredient_search(self, search_terms) :
@@ -1030,19 +1076,25 @@ class drink_index :
 
 	#organizes search terms
 	def parse_search(self, search_terms) :
-		term_dict={"priority":[],"standard":[],"blacklist":[],"group":[]}
+		term_dict={"priority":[],"standard":[],"blacklist":[],"group":[],"filters":[]}
 		term_list=search_terms.split(',')
 		#solves white space
 		term_list=[t.strip() for t in term_list]
+
+		#TODO reimplement with get_filter_lists
+		#consider simplying parsing and filtering to avoid calling getters twice
 
 		#here I would add a decision to not fuzzy search
 		if "$cabinet" in term_list :
 			term_dict["standard"].extend(self.get_cabinet())
 			term_list.remove("$cabinet")
+			term_dict["filters"].append("$cabinet")
 
 		if "$vector" in term_list :
 			term_dict["standard"].extend(self.ingredient_handler.get_available_ingredients())
 			term_list.remove("$vector")
+			term_dict["filters"].append("$vector")
+
 
 		if "$bookmark" in term_list or  "$bookmarks" in term_list:
 			term_dict["group"].extend(self.bookmarks)
@@ -1054,13 +1106,16 @@ class drink_index :
 				term_list.remove("$bookmarks")
 			except :
 				pass
+			term_dict["filters"].append("$bookmark")
+
 
 		if "$rated" in term_list :
 			term_dict["group"].extend(self.ratings.keys())
 			try :
-				term_list.remove("$bookmark")
+				term_list.remove("$rated")
 			except :
 				pass
+			term_dict["filters"].append("$rated")
 
 
 		for term in term_list :
@@ -1078,7 +1133,6 @@ class drink_index :
 			else :
 				synonyms=self.ingredient_handler.get_synonyms(term)
 				term_dict["standard"].extend(list(synonyms))
-		# input(term_dict)
 		return term_dict
 
 	#menu for search options
@@ -1094,7 +1148,7 @@ class drink_index :
 				selection=self.menu.menu(menu_options, info)
 				if selection!=None :
 
-					#Keeps previous search, not the most useful. Make it editable?
+					#keeps last search
 					if(self.last_search!="") :
 						def hook():
 							readline.insert_text(self.last_search)
@@ -1102,7 +1156,6 @@ class drink_index :
 						readline.set_pre_input_hook(hook)
 						search_terms = input("search: ")
 						readline.set_pre_input_hook()
-						# search_terms=input("search({}): ".format(self.last_search))
 						if search_terms!="" and search_terms!=" " :
 							self.last_search=search_terms
 						else :
@@ -1110,7 +1163,6 @@ class drink_index :
 					else :
 						search_terms=input("search: ")
 						self.last_search=search_terms
-
 
 					parsed_terms=self.parse_search(search_terms)
 					drink_list=menu_executions[selection](parsed_terms)
@@ -1219,7 +1271,8 @@ class drink_index :
 		(all_ingredients,counts,recipe_list,completions) = zip(*data)
 		missing_ingredients_text=[]
 		missing_ingredients_recipes=[]
-		full_cabinet=self.get_cabinet()
+# 		full_cabinet=self.get_cabinet()
+		full_cabinet=self.ingredient_handler.get_available_ingredients()
 
 		#generates lists of ingredient texts and recipes
 		for ingredient,count,recipes,completion_val in zip(all_ingredients,counts,recipe_list,completions) :
