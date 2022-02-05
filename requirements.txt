@@ -1,9 +1,3 @@
-pickle
-time
-os
-math
-re
 numpy
 readchar
-csv
 readline
